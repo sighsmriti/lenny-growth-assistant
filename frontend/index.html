@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Lenny Growth Assistant · Artifacts</title>
+  <link rel="stylesheet" href="/viewer-assets/viewer.css">
+  <script defer src="/viewer-assets/viewer.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">LENNY GROWTH ASSISTANT</p>
+      <h1>Artifact viewer</h1>
+    </div>
+    <a href="/docs">API docs</a>
+  </header>
+  <main class="shell">
+    <section class="toolbar" aria-label="Artifact controls">
+      <label for="artifact-select">Saved artifacts</label>
+      <select id="artifact-select" aria-label="Select a saved artifact">
+        <option value="">Choose an artifact</option>
+      </select>
+      <button id="refresh-button" class="quiet-button" type="button">Refresh list</button>
+      <span class="toolbar-spacer"></span>
+      <button id="sample-markdown" class="quiet-button" type="button">Try Markdown sample</button>
+      <button id="sample-html" class="quiet-button" type="button">Try HTML/CSS sample</button>
+    </section>
+
+    <div id="error-state" class="notice error" role="alert" hidden></div>
+    <section id="empty-state" class="empty-state" aria-live="polite">
+      <div class="empty-icon" aria-hidden="true">A</div>
+      <h2>No artifact selected</h2>
+      <p>Choose a saved artifact, load a local sample, or generate a Ship 30 essay from the agent skill endpoint.</p>
+      <div class="sample-actions">
+        <button id="empty-sample-markdown" type="button">Preview Markdown sample</button>
+        <button id="empty-sample-html" class="secondary-button" type="button">Preview HTML/CSS security sample</button>
+      </div>
+    </section>
+
+    <section id="artifact-panel" class="artifact-panel" hidden>
+      <div class="artifact-heading">
+        <div>
+          <div class="title-row">
+            <h2 id="artifact-title"></h2>
+            <span id="artifact-badge" class="badge" hidden></span>
+          </div>
+          <p id="artifact-meta" class="meta"></p>
+        </div>
+        <div class="view-switch" role="group" aria-label="Artifact view">
+          <button id="preview-button" type="button" aria-pressed="true">Preview</button>
+          <button id="source-button" type="button" aria-pressed="false">Source</button>
+        </div>
+      </div>
+      <div id="preview-view" class="preview-view">
+        <article id="markdown-preview" class="markdown-preview" hidden></article>
+        <iframe id="html-preview" title="Sandboxed artifact preview" sandbox="" hidden></iframe>
+      </div>
+      <section id="source-view" class="source-view" aria-label="Artifact source" hidden>
+        <pre><code id="source-code"></code></pre>
+      </section>
+    </section>
+  </main>
+  <footer>Generated artifacts are untrusted. HTML and CSS previews run in a sandboxed frame.</footer>
+</body>
+</html>

@@ -1,0 +1,9 @@
+﻿fastapi
+uvicorn[standard]
+httpx
+SQLAlchemy>=2.0
+psycopg[binary]
+pytest
+PyYAML>=6.0
+markdown-it-py>=3.0
+bleach>=6.2

@@ -1,0 +1,19 @@
+{
+  "name": "lenny-growth-assistant-pi-agent",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "agent:check": "node --check run-skill.mjs",
+    "test:viewer": "node --test viewer.test.mjs",
+    "test:viewer:browser": "node --test viewer.browser.test.mjs",
+    "viewer:check": "node --check ../frontend/viewer.js"
+  },
+  "devDependencies": {
+    "jsdom": "^27.4.0",
+    "playwright-core": "^1.64.0"
+  },
+  "dependencies": {
+    "@earendil-works/pi-ai": "^1.1.0",
+    "@earendil-works/pi-coding-agent": "^1.1.0"
+  }
+}

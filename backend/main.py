@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
 
-import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,7 +17,7 @@ DATABASE_URL = os.getenv(
     "postgresql+psycopg://lenny_user:local_dev_password@127.0.0.1:5433/lenny_assistant",
 )
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-MODEL = "qwen2.5:3b"
+MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
@@ -141,6 +140,16 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/config")
+def public_app_config():
+    from backend.llm import LLMConfigurationError, public_config
+
+    try:
+        return {"llm": public_config()}
+    except LLMConfigurationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
 @app.get("/api/agent/skills")
 def list_agent_skills():
     """List Pi skills available to the app's agent workflow."""
@@ -151,7 +160,7 @@ def list_agent_skills():
 
 @app.post("/api/agent/skills/{skill_name}/run")
 async def run_agent_skill(skill_name: str, request: AgentSkillRequest):
-    """Run a discovered Pi skill using the configured local Ollama model."""
+    """Run a discovered Pi skill using the configured model provider."""
     from backend.agent import PiAgentError, run_skill
 
     try:
@@ -167,8 +176,9 @@ async def run_agent_skill(skill_name: str, request: AgentSkillRequest):
     return {
         "reply": reply,
         "framework": "pi-coding-agent",
-        "provider": "ollama",
-        "model": MODEL,
+        "provider": os.getenv("LLM_PROVIDER", "ollama").strip().lower(),
+        "model": (os.getenv("OPENAI_MODEL", "gpt-4o-mini") if os.getenv("LLM_PROVIDER", "ollama").strip().lower() == "openai"
+                  else os.getenv("OLLAMA_MODEL", MODEL)),
         "skill": skill_name,
         "artifact_id": str(artifact.id),
     }
@@ -243,6 +253,12 @@ def get_messages(session_id: UUID):
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
+    from backend.llm import LLMConfigurationError, LLMError, get_config, generate
+
+    try:
+        provider_config = get_config()
+    except LLMConfigurationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     with SessionLocal() as db:
         chat_session = get_session_or_404(db, request.session_id)
         user_message = ChatMessage(session_id=request.session_id, role="user", content=request.message)
@@ -260,7 +276,7 @@ async def chat(request: ChatRequest):
             db.add(ChatMessage(session_id=request.session_id, role="assistant", content=reply))
             chat_session.updated_at = datetime.now(timezone.utc)
             db.commit()
-            return {"reply": reply, "provider": "ollama", "model": MODEL, "citations": []}
+            return {"reply": reply, "provider": provider_config.provider, "model": provider_config.model, "citations": []}
         # Keep session context, while stating that only current retrieved passages support facts.
         messages.insert(0, {"role": "system", "content":
             "For factual claims about the transcript collection, use only the source excerpts in the latest user message. "
@@ -269,17 +285,9 @@ async def chat(request: ChatRequest):
         messages[-1] = {"role": "user", "content": evidence_prompt(request.message, relevant)}
 
         try:
-            async with httpx.AsyncClient(timeout=180.0) as client:
-                response = await client.post(
-                    f"{OLLAMA_URL}/api/chat",
-                    json={"model": MODEL, "messages": messages, "stream": False},
-                )
-                response.raise_for_status()
-            reply = response.json()["message"]["content"]
-            if not isinstance(reply, str):
-                raise ValueError("Invalid Ollama response")
-        except (httpx.HTTPError, ValueError, KeyError, TypeError):
-            raise HTTPException(status_code=502, detail="Ollama is unavailable or the model request failed.")
+            reply = await generate(messages)
+        except LLMError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
         db.add(ChatMessage(session_id=request.session_id, role="assistant", content=reply))
         chat_session.updated_at = datetime.now(timezone.utc)
@@ -288,7 +296,7 @@ async def chat(request: ChatRequest):
                       "source_identity": row.source_identity, "url": row.url,
                       "chunk_index": row.chunk_index, "excerpt": row.content,
                       "relevance": round(score, 6)} for row, score in relevant]
-        return {"reply": reply, "provider": "ollama", "model": MODEL, "citations": citations}
+        return {"reply": reply, "provider": provider_config.provider, "model": provider_config.model, "citations": citations}
 
 
 FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"

@@ -48,30 +48,12 @@ def test_chat_persists_messages_and_history(client, monkeypatch):
     with main.SessionLocal() as db:
         db.add(source); db.commit()
 
-    class FakeResponse:
-        def raise_for_status(self):
-            pass
+    async def fake_generate(messages):
+        assert messages[-1]["role"] == "user"
+        assert "qzxgreetingtoken" in messages[-1]["content"]
+        return "Hello back"
 
-        def json(self):
-            return {"message": {"content": "Hello back"}}
-
-    class FakeClient:
-        def __init__(self, **kwargs):
-            pass
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *args):
-            pass
-
-        async def post(self, url, json):
-            assert json["messages"][-1]["role"] == "user"
-            assert "qzxgreetingtoken" in json["messages"][-1]["content"]
-            assert json["model"] == "qwen2.5:3b"
-            return FakeResponse()
-
-    monkeypatch.setattr(main.httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr("backend.llm.generate", fake_generate)
     async def fake_embed(texts):
         return [[1.0, 0.0] for _ in texts]
     monkeypatch.setattr("backend.rag.embed_texts", fake_embed)
@@ -95,22 +77,11 @@ def test_chat_preserves_session_history(client, monkeypatch):
         db.add(source); db.commit()
     calls = []
 
-    class FakeResponse:
-        def __init__(self, answer): self.answer = answer
-        def raise_for_status(self): pass
-        def json(self): return {"message": {"content": self.answer}}
+    async def fake_generate(messages):
+        calls.append(messages)
+        return "answer"
 
-    class FakeClient:
-        def __init__(self, **kwargs): pass
-        async def __aenter__(self): return self
-        async def __aexit__(self, *args): pass
-        async def post(self, url, json):
-            calls.append(json["messages"])
-            return FakeResponse("answer")
-
-    async def fake_embed(texts): return [[1.0, 0.0] for _ in texts]
-    monkeypatch.setattr(main.httpx, "AsyncClient", FakeClient)
-    monkeypatch.setattr("backend.rag.embed_texts", fake_embed)
+    monkeypatch.setattr("backend.llm.generate", fake_generate)
     assert client.post("/api/chat", json={"session_id": session_id, "message": "qzxfirsttoken"}).status_code == 200
     assert client.post("/api/chat", json={"session_id": session_id, "message": "qzxsecondtoken"}).status_code == 200
     assert [m["role"] for m in calls[1]] == ["system", "user", "assistant", "user"]
@@ -132,17 +103,9 @@ def test_retrieval_and_citations(client, monkeypatch):
         found = retrieve(db, "qzxactivationtoken qzxretentiontoken", min_rank=0.0)
         assert found and found[0][0].filename == "activation.md"
 
-    class FakeResponse:
-        def raise_for_status(self): pass
-        def json(self): return {"message": {"content": "Retention is supported by the source."}}
-    class FakeClient:
-        def __init__(self, **kwargs): pass
-        async def __aenter__(self): return self
-        async def __aexit__(self, *args): pass
-        async def post(self, url, json): return FakeResponse()
-    async def fake_embed(texts): return [[1.0, 0.0] for _ in texts]
-    monkeypatch.setattr(main.httpx, "AsyncClient", FakeClient)
-    monkeypatch.setattr("backend.rag.embed_texts", fake_embed)
+    async def fake_generate(messages):
+        return "Retention is supported by the source."
+    monkeypatch.setattr("backend.llm.generate", fake_generate)
     session_id = client.post("/api/sessions").json()["id"]
     response = client.post("/api/chat", json={"session_id": session_id, "message": "qzxactivationtoken qzxretentiontoken"})
     citation = response.json()["citations"][0]
@@ -168,19 +131,9 @@ def test_chunking_and_document_metadata(tmp_path):
 
 
 def test_unsupported_question_has_no_citations(client, monkeypatch):
-    class FakeResponse:
-        def raise_for_status(self): pass
-        def json(self): return {"message": {"content": "The knowledge base does not contain enough information to answer this question."}}
-    class FakeClient:
-        def __init__(self, **kwargs): pass
-        async def __aenter__(self): return self
-        async def __aexit__(self, *args): pass
-        async def post(self, url, json):
-            raise AssertionError("generation must not run without evidence")
-            return FakeResponse()
-    async def fake_embed(texts): return [[1.0, 0.0] for _ in texts]
-    monkeypatch.setattr(main.httpx, "AsyncClient", FakeClient)
-    monkeypatch.setattr("backend.rag.embed_texts", fake_embed)
+    async def generation_must_not_run(messages):
+        raise AssertionError("generation must not run without evidence")
+    monkeypatch.setattr("backend.llm.generate", generation_must_not_run)
     session_id = client.post("/api/sessions").json()["id"]
     response = client.post("/api/chat", json={"session_id": session_id, "message": "Who won an unrelated award?"})
     assert response.status_code == 200

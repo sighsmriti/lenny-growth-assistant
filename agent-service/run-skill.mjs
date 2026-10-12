@@ -13,7 +13,10 @@ import {
 const serviceDir = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(serviceDir, "..");
 const agentDir = resolve(serviceDir, ".pi-agent");
-const modelId = process.env.PI_OLLAMA_MODEL || "qwen2.5:3b";
+const provider = (process.env.LLM_PROVIDER || "ollama").trim().toLowerCase();
+const modelId = provider === "openai"
+  ? (process.env.OPENAI_MODEL || "gpt-4o-mini")
+  : (process.env.PI_OLLAMA_MODEL || process.env.OLLAMA_MODEL || "qwen2.5:3b");
 
 async function main() {
   let input = "";
@@ -30,8 +33,14 @@ async function main() {
     allowModelNetwork: false,
     refreshOnCreate: false,
   });
-  const model = modelRuntime.getModel("ollama", modelId);
-  if (!model) throw new Error(`Pi could not load the local Ollama model configuration for ${modelId}.`);
+  if (provider !== "ollama" && provider !== "openai") {
+    throw new Error("LLM_PROVIDER must be either 'ollama' or 'openai'.");
+  }
+  if (provider === "openai" && !process.env.OPENAI_API_KEY) {
+    throw new Error("OpenAI is selected but OPENAI_API_KEY is not configured.");
+  }
+  const model = modelRuntime.getModel(provider, modelId);
+  if (!model) throw new Error(`Pi could not load the ${provider} model configuration for ${modelId}.`);
 
   const skillPath = resolve(projectRoot, ".pi", "skills", request.skill, "SKILL.md");
   await readFile(skillPath, "utf8");

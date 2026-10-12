@@ -59,7 +59,7 @@ async def run_skill(name: str, task: str) -> str:
     except asyncio.TimeoutError as exc:
         process.kill()
         await process.communicate()
-        raise PiAgentError("The local Pi agent timed out. Check Ollama and try again.") from exc
+        raise PiAgentError("The local Pi agent timed out. Check the selected model provider and try again.") from exc
 
     if process.returncode != 0:
         detail = stderr.decode("utf-8", errors="replace").strip()

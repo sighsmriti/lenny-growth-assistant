@@ -307,4 +307,10 @@ def artifact_viewer():
     return FileResponse(FRONTEND_DIR / "index.html")
 
 
+@app.get("/", include_in_schema=False)
+def chat_app():
+    return FileResponse(FRONTEND_DIR / "chat.html")
+
+
 app.mount("/viewer-assets", StaticFiles(directory=FRONTEND_DIR), name="viewer-assets")
+app.mount("/chat-assets", StaticFiles(directory=FRONTEND_DIR), name="chat-assets")

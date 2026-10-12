@@ -23,6 +23,29 @@ FTS_QUESTION_FRAMING = {
     "say", "ask", "discuss", "recommend", "suggest", "opinion", "think",
     "know", "share", "summarize", "describe", "answer", "question",
 }
+FTS_QUERY_METADATA = {"transcript", "transcripts", "concise", "citation", "citations"}
+
+
+def normalize_query_terms(query: str) -> list[str]:
+    """Remove request wording while preserving content terms used as topics."""
+    normalized = query.lower()
+    # Remove explicit evidence/output instructions and their multi-clause
+    # scaffolding before constructing the conjunctive full-text query.
+    normalized = re.sub(r"\bbased only on (?:the )?retrieved podcast passages\b", " ", normalized)
+    normalized = re.sub(
+        r"\b(?:summarize|describe|explain|list|identify|provide|give)\s+"
+        r"(?:(?:\d+|one|two|three|four|five)\s+)?(?:specific\s+)?",
+        " ", normalized,
+    )
+    normalized = re.sub(r"\bfor each\b[^.!?]*[.!?]", " ", normalized)
+    normalized = re.sub(r"\bif the evidence\b[^.!?]*(?:[.!?]|$)", " ", normalized)
+    # These are request/corpus labels, not topic terms. Keep "key" available
+    # for topics such as key metrics or key management.
+    normalized = re.sub(r"\bkey\s+lessons?\b", " ", normalized)
+    normalized = re.sub(r"\bindexed(?:\W+\w+){0,3}\W+transcripts?\b", " ", normalized)
+    raw_terms = re.findall(r"[^\W_]+", normalized, re.UNICODE)
+    ignored = FTS_QUESTION_FRAMING | FTS_QUERY_METADATA
+    return [term for term in raw_terms if term not in ignored]
 
 
 class EmbeddingError(RuntimeError):
@@ -209,8 +232,7 @@ def retrieve(db: Any, query: str, limit: int = 5, min_rank: float = FTS_MIN_RANK
     vector = func.to_tsvector(config, document_text)
     # Remove request framing and punctuation, then let PostgreSQL's English
     # dictionary normalize the remaining content terms exactly once.
-    raw_terms = re.findall(r"[^\W_]+", query.lower(), re.UNICODE)
-    terms = [term for term in raw_terms if term not in FTS_QUESTION_FRAMING]
+    terms = normalize_query_terms(query)
     if not terms:
         return []
     tsquery = func.plainto_tsquery(config, " ".join(terms))

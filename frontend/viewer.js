@@ -87,7 +87,7 @@
     render();
   }
 
-  async function refresh() {
+  async function refresh(selectedId = "") {
     const refs = ui();
     refs.error.hidden = true;
     try {
@@ -96,9 +96,10 @@
       const artifacts = await response.json();
       refs.select.replaceChildren(new Option("Choose an artifact", ""));
       for (const item of artifacts) refs.select.add(new Option(`${item.title} (${item.format})`, item.id));
-      refs.select.value = "";
+      refs.select.value = selectedId;
       current = null;
       render();
+      if (selectedId) await loadArtifact(selectedId);
     } catch (error) {
       current = null;
       render();
@@ -126,7 +127,7 @@
     await refresh();
   }
 
-  window.ArtifactViewer = { init, refresh, loadArtifact, setMode, sandboxDocument, strictCsp: STRICT_CSP };
+  window.ArtifactViewer = { init, refresh, loadArtifact, showArtifact: (id) => refresh(id), setMode, sandboxDocument, strictCsp: STRICT_CSP };
   if (!window.__ARTIFACT_VIEWER_DISABLE_AUTO_INIT__) {
     const start = () => init().catch((error) => {
       const errorState = el("error-state");

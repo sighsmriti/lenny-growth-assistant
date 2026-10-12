@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Lenny Growth Assistant</title>
+  <link rel="stylesheet" href="/chat-assets/chat.css">
+  <script defer src="/chat-assets/chat.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Conversation sidebar">
+      <a class="brand" href="/" aria-label="Lenny Growth Assistant home">
+        <span class="brand-mark" aria-hidden="true">L</span>
+        <span><strong>Lenny</strong><small>Growth Assistant</small></span>
+      </a>
+      <button id="new-chat" class="new-chat" type="button"><span aria-hidden="true">＋</span> New chat</button>
+      <div class="session-heading"><span>YOUR CHATS</span><button id="refresh-sessions" type="button" aria-label="Refresh conversations" title="Refresh conversations">↻</button></div>
+      <div id="sessions-state" class="sidebar-note" role="status">Loading conversations…</div>
+      <nav id="session-list" class="session-list" aria-label="Saved conversations"></nav>
+      <div class="sidebar-bottom"><span class="status-dot" aria-hidden="true"></span><span id="provider-sidebar">Connecting to model…</span></div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="topbar-title"><button id="mobile-menu" type="button" aria-label="Show conversations">☰</button><div><p class="eyebrow">GROUNDED IN LENNY’S PODCAST</p><h1>Growth, with context.</h1></div></div>
+        <div class="topbar-actions"><span id="model-status" class="model-status" role="status">Loading model…</span><a href="/docs">API docs</a></div>
+      </header>
+
+      <div class="workspace-grid">
+        <section class="chat-column" aria-label="Chat">
+          <div id="chat-state" class="chat-state" role="status">Create a conversation to get started.</div>
+          <div id="messages" class="messages" aria-live="polite" aria-label="Conversation messages"></div>
+          <div id="request-error" class="request-error" role="alert" hidden></div>
+          <div id="unsupported-note" class="unsupported-note" hidden>Try asking about a topic covered in the indexed podcast transcripts.</div>
+          <form id="composer" class="composer">
+            <label class="sr-only" for="message-input">Message Lenny Growth Assistant</label>
+            <textarea id="message-input" rows="1" maxlength="20000" placeholder="Ask about growth, product, or startups…" required></textarea>
+            <div class="composer-footer"><span>Answers use indexed transcripts and include source citations.</span><button id="send-button" type="submit"><span>Send</span><span aria-hidden="true">↑</span></button></div>
+          </form>
+          <div class="chat-tools"><span>Want to turn an idea into an essay?</span><button id="essay-button" type="button">✦ Generate Ship 30 for 30 essay</button></div>
+        </section>
+
+        <aside class="artifact-column" aria-label="Artifact preview">
+          <div class="artifact-panel-heading"><div><p class="eyebrow">YOUR WORKSPACE</p><h2>Artifact preview</h2></div><a href="/viewer" target="_blank" rel="noreferrer">Open viewer ↗</a></div>
+          <iframe id="artifact-frame" src="/viewer" title="Secure artifact preview panel"></iframe>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <div id="busy-overlay" class="busy-overlay" hidden><div class="spinner" aria-hidden="true"></div><span id="busy-label">Thinking…</span></div>
+</body>
+</html>

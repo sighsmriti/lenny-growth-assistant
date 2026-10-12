@@ -83,3 +83,13 @@ test("HTML preview uses an empty sandbox and restrictive CSP without script or s
   assert.equal(dom.window.__artifactViewerPwned, undefined);
   dom.window.close();
 });
+
+test("showArtifact refreshes the saved list and selects the generated artifact", async () => {
+  const detail = { id: "essay-1", title: "A Growth Essay", format: "markdown", content: "# Essay", rendered_html: "<h1>Essay</h1>" };
+  const { dom, calls } = await makeViewer([{ id: "essay-1", title: detail.title, format: detail.format }], { "essay-1": detail });
+  await dom.window.ArtifactViewer.showArtifact("essay-1");
+  assert.equal(dom.window.document.getElementById("artifact-select").value, "essay-1");
+  assert.equal(dom.window.document.getElementById("artifact-title").textContent, "A Growth Essay");
+  assert.ok(calls.includes("/api/artifacts/essay-1"));
+  dom.window.close();
+});

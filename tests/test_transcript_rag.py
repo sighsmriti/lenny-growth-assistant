@@ -102,22 +102,65 @@ def test_postgres_full_text_rank_citations_and_unsupported_question(tmp_path):
         cleanup_sources({high_id, low_id})
 
 
-def test_full_sentence_product_market_fit_query_retrieves_citable_passage(tmp_path):
+def test_query_formatting_does_not_block_topic_retrieval_or_remove_meaningful_key(tmp_path):
     main.ensure_rag_schema()
     root = tmp_path.parent
-    path = tmp_path / f"pmf-{uuid4().hex}" / "pmf.md"
+    folder = tmp_path / f"rag-query-{uuid4().hex}"
+    path = folder / "pmf.md"
+    metrics_path = folder / "metrics.md"
     identity = path.resolve().relative_to(root.resolve()).as_posix()
+    metrics_identity = metrics_path.resolve().relative_to(root.resolve()).as_posix()
     write_episode(path, title="Finding Product-Market Fit", guest="Test Founder",
-                  url="https://example.test/pmf", text="Product market fit comes from solving a painful customer problem. " * 8)
+                  url="https://example.test/pmf", text="Building products that solve customer problems is how teams find product market fit. " * 8)
+    write_episode(metrics_path, title="Key Activation Metrics", guest="Metrics Guest",
+                  url="https://example.test/metrics", text="Key activation metrics show whether new users reach value and continue using the product. " * 8)
     try:
-        assert ingest_paths([path], root).processed_files == 1
+        assert ingest_paths([path, metrics_path], root).processed_files == 2
         with main.SessionLocal() as db:
-            results = retrieve(db, "What advice does Lenny's podcast give about finding product-market fit?")
+            results = retrieve(db, "What are the key lessons about building products from the indexed Lenny podcast transcripts? Give me a concise answer with citations.")
             match = next((row for row, _ in results if row.source_identity == identity), None)
             assert match is not None
             assert match.guest_name == "Test Founder"
             assert match.url == "https://example.test/pmf"
-            assert "Product market fit" in match.content
+            assert "Building products" in match.content
+            key_results = retrieve(db, "What are key activation metrics?")
+            key_match = next((row for row, _ in key_results if row.source_identity == metrics_identity), None)
+            assert key_match is not None
+            assert "Key activation metrics" in key_match.content
+            citations = evidence_prompt("What are the key lessons about building products?", [results[0]])
+            assert "file=pmf.md" in citations
+            assert "https://example.test/pmf" in citations
+            assert retrieve(db, "Who won an unrelated award?") == []
+    finally:
+        cleanup_sources({identity, metrics_identity})
+
+
+def test_multi_lesson_evidence_instructions_retrieve_product_building_passages(tmp_path):
+    main.ensure_rag_schema()
+    root = tmp_path.parent
+    path = tmp_path / f"rag-followup-{uuid4().hex}" / "building.md"
+    identity = path.resolve().relative_to(root.resolve()).as_posix()
+    write_episode(path, title="Product Building Lessons", guest="Product Guest",
+                  url="https://example.test/building",
+                  text="A product-building lesson is to observe customer behavior and improve the product through focused iteration. " * 8)
+    question = (
+        "Based only on the retrieved podcast passages, summarize three specific product-building lessons. "
+        "For each lesson, explain the supporting evidence and cite the relevant episode. "
+        "If the evidence doesn't support a lesson, say so."
+    )
+    try:
+        assert ingest_paths([path], root).processed_files == 1
+        with main.SessionLocal() as db:
+            detailed = retrieve(db, question)
+            concise = retrieve(db, "building products")
+            match = next((row for row, _ in detailed if row.source_identity == identity), None)
+            assert match is not None
+            assert any(row.source_identity == identity for row, _ in concise)
+            detailed_score = next(score for row, score in detailed if row.source_identity == identity)
+            assert detailed_score >= 0.01
+            citation_prompt = evidence_prompt(question, [(match, detailed_score)])
+            assert "file=building.md" in citation_prompt
+            assert "https://example.test/building" in citation_prompt
             assert retrieve(db, "Who won an unrelated award?") == []
     finally:
         cleanup_sources({identity})

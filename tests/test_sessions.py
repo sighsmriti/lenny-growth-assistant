@@ -30,6 +30,16 @@ def client():
             db.commit()
 
 
+def test_chat_ui_and_assets_are_served(client):
+    page = client.get("/")
+    assert page.status_code == 200
+    assert "Lenny Growth Assistant" in page.text
+    assert "/chat-assets/chat.js" in page.text
+    assert client.get("/chat-assets/chat.js").status_code == 200
+    assert client.get("/chat-assets/chat.css").status_code == 200
+    assert client.get("/viewer").status_code == 200
+
+
 def test_create_session_and_list(client):
     response = client.post("/api/sessions")
     assert response.status_code == 201

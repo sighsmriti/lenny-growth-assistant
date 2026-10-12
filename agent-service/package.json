@@ -4,9 +4,11 @@
   "type": "module",
   "scripts": {
     "agent:check": "node --check run-skill.mjs",
+    "test:chat": "node --test chat.test.mjs",
     "test:viewer": "node --test viewer.test.mjs",
     "test:viewer:browser": "node --test viewer.browser.test.mjs",
-    "viewer:check": "node --check ../frontend/viewer.js"
+    "viewer:check": "node --check ../frontend/viewer.js",
+    "chat:check": "node --check ../frontend/chat.js"
   },
   "devDependencies": {
     "jsdom": "^27.4.0",

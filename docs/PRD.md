@@ -33,8 +33,8 @@ Excluded: authentication, authorization and user metadata; transcript acquisitio
 
 - A session has a UUID and timestamps; messages are persisted and scoped to it. Unknown session and artifact IDs return 404; invalid request data is rejected by FastAPI validation.
 - Transcript ingestion parses front matter, splits text into overlapping chunks, and stores source identity, title, guest, URL, file hash and chunk index. An unchanged file is skipped; a changed file is replaced transactionally.
-- Chat retrieves up to five transcript chunks using PostgreSQL English full-text search, returns source metadata and excerpts, and refuses when no result meets the minimum rank. The configured Ollama chat model receives only retrieved passages as source evidence.
-- Pi skill discovery returns valid project skills. Running the essay skill uses Pi with local Ollama, has a five-minute timeout, and stores the answer as an artifact.
+- Chat retrieves up to five transcript chunks using PostgreSQL English full-text search, returns source metadata and excerpts, and refuses when no result meets the minimum rank. The selected Ollama or OpenAI chat provider receives retrieved passages as source evidence.
+- Pi skill discovery returns valid project skills. Running the essay skill uses Pi with the selected provider (Ollama by default), has a five-minute timeout, and stores the answer as an artifact.
 - Artifact preview distinguishes Markdown from HTML/CSS. Markdown rendering disables raw HTML and allowlists output. HTML/CSS runs in a sandboxed iframe with CSP restrictions; source mode displays text.
 - `/health` reports API liveness and `/health/db` checks PostgreSQL connectivity.
 - Existing automated tests pass when the PostgreSQL service and agent-service dependencies required by the test environment are available.

@@ -1,15 +1,16 @@
 ﻿# Lenny Growth Assistant
 
-A local FastAPI service for grounded Q&A over a local copy of Lenny's Podcast Markdown transcripts, plus a Pi Coding Agent essay skill and a separate artifact viewer. This is a take-home prototype; the current app uses local Ollama only and does not include an integrated chat frontend.
+A local FastAPI service for grounded Q&A over a local copy of Lenny's Podcast Markdown transcripts, plus a Pi Coding Agent essay skill and a separate artifact viewer. Ollama is the default provider; OpenAI can be selected through environment configuration. This is a take-home prototype and does not include an integrated chat frontend.
 
 ## Architecture at a glance
 
 - FastAPI provides session, chat, agent-skill and artifact APIs.
 - PostgreSQL stores sessions, messages, transcript chunks/source manifests and artifacts.
 - Transcript search uses PostgreSQL English full-text search and a GIN index. It does not create embeddings.
-- Ollama serves `qwen2.5:3b` for chat and, by default, the Pi skill workflow.
+- Ollama serves `qwen2.5:3b` by default; OpenAI is an optional configured provider for chat and the Pi skill workflow.
 - `/viewer` is a static artifact browser. It is separate from chat and skill invocation.
-- See [docs/architecture.md](docs/architecture.md), [docs/PRD.md](docs/PRD.md), [docs/design.md](docs/design.md), and [docs/rag.md](docs/rag.md).
+- See [docs/architecture.md](docs/architecture.md), [docs/PRD.md](docs/PRD.md), [docs/design.md](docs/design.md), [docs/rag.md](docs/rag.md), and the [manual test plan](docs/test_plan.md).
+- The [development log](docs/agent-transcripts/development-log.md) is a reconstructed summary, not a raw coding-agent transcript; no original exports are available in this repository. See [agent transcript instructions](docs/agent-transcripts/README.md).
 
 ## Prerequisites
 
@@ -124,7 +125,7 @@ npm.cmd run test:viewer:browser
 Pop-Location
 ```
 
-The browser check requires Chrome. Manual UI check: open `/viewer`; refresh the list; select a saved artifact; switch Preview/Source; try both local samples; verify the HTML sample cannot change the parent page; resize to a narrow viewport; and keyboard through the controls. The automated UI checks cover viewer state and sandbox/CSP behavior, not a full accessibility or responsive audit.
+The browser check requires Chrome. Follow the [manual UI and API test plan](docs/test_plan.md) for chat/session persistence, grounding/citations, unsupported questions, provider configuration/errors, essay generation, artifact rendering/security, and responsive/accessibility smoke checks. The automated UI checks cover viewer state and sandbox/CSP behavior, not a full accessibility or responsive audit.
 
 ## Troubleshooting
 
@@ -144,5 +145,5 @@ The browser check requires Chrome. Manual UI check: open `/viewer`; refresh the 
 - Compose starts PostgreSQL only; Ollama, FastAPI and Node/Pi run on the host.
 - Full-text search can miss semantically related passages; generated answer quality is not automatically evaluated.
 - No automatic cleanup for transcript files removed from the source directory.
-- The repository snapshot has no genuine coding-agent transcripts; see [docs/agent-transcripts/README.md](docs/agent-transcripts/README.md) for how to add original logs.
+- The repository snapshot has no genuine coding-agent transcripts. The development log is labeled as reconstructed and is not a substitute for original exports; see [docs/agent-transcripts/README.md](docs/agent-transcripts/README.md) to add genuine logs later.
 - The assignment requires a camera-on 2–3 minute demo video upload and public repository submission. These are external candidate actions and are not represented as complete here.
